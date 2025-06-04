@@ -1,0 +1,13 @@
+{
+  "name": "betpawa-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "^21.3.8",
+    "chrome-aws-lambda": "^10.1.0",
+    "axios": "^1.6.8"
+  }
+}
