@@ -1,11 +1,15 @@
 {
   "name": "betpawa-bot",
   "version": "1.0.0",
+  "description": "Automated BetPawa login and betting bot",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "postinstall": "node install-browser.js"
   },
+  "type": "commonjs",
   "dependencies": {
+    "axios": "^1.6.8",
     "chrome-aws-lambda": "^10.1.0",
     "puppeteer-core": "^10.1.0"
   }
