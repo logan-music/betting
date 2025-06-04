@@ -1,40 +1,42 @@
 const chromium = require('chrome-aws-lambda');
 
-const phoneNumber = '618306398'; // badilisha hapa
-const password = 'na3#'; // badilisha hapa
+(async () => {
+  let browser = null;
 
-const login = async () => {
   try {
-    const browser = await chromium.puppeteer.launch({
+    browser = await chromium.puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
+      executablePath: await chromium.executablePath || '/usr/bin/chromium-browser',
       headless: chromium.headless,
     });
 
     const page = await browser.newPage();
-
-    console.log('Opening BetPawa login page...');
+    console.log('[+] Opening BetPawa login page...');
     await page.goto('https://www.betpawa.co.tz/login', { waitUntil: 'networkidle2' });
 
-    await page.type('input[type="tel"]', phoneNumber);
-    await page.type('input[type="password"]', password);
+    console.log('[+] Typing phone number...');
+    await page.waitForSelector('input[type="tel"]', { timeout: 10000 });
+    await page.type('input[type="tel"]', '618306398', { delay: 100 });
 
-    console.log('Submitting login form...');
+    console.log('[+] Typing password...');
+    await page.waitForSelector('input[type="password"]', { timeout: 10000 });
+    await page.type('input[type="password"]', 'na3#', { delay: 100 });
+
+    console.log('[+] Clicking login...');
+    await page.waitForSelector('button[type="submit"]', { timeout: 10000 });
     await page.click('button[type="submit"]');
 
-    await page.waitForTimeout(5000);
+    console.log('[+] Waiting for login to complete...');
+    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
 
-    const currentUrl = page.url();
-    console.log('Current URL after login:', currentUrl);
+    console.log('[✅] Logged in successfully! Current URL:', page.url());
 
-    const content = await page.content();
-    console.log('Page content snippet:', content.slice(0, 500));
-
-    await browser.close();
-  } catch (err) {
-    console.error('Login failed:', err.message);
+  } catch (error) {
+    console.error('[❌] Login failed:', error.message);
+  } finally {
+    if (browser !== null) {
+      await browser.close();
+    }
   }
-};
-
-login();
+})();
