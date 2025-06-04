@@ -1,49 +1,42 @@
-const chromium = require('chrome-aws-lambda');
-const puppeteer = require('puppeteer-core');
-const axios = require('axios');
+import chromium from 'chrome-aws-lambda';
 
-// Telegram config
-const BOT_TOKEN = '7501645118:AAHuL5xMbPY3WZXJVnidijR9gqoyyCS0BzY';
-const CHAT_ID = '6978133426';
+const phoneNumber = '618306398'; // badilisha hii kama ni tofauti
+const password = 'na3#'; // badilisha na password sahihi
 
-exports.handler = async () => {
-  let browser = null;
-
+const login = async () => {
   try {
-    browser = await puppeteer.launch({
+    const browser = await chromium.puppeteer.launch({
       args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath,
-      headless: chromium.headless
+      headless: chromium.headless,
     });
 
     const page = await browser.newPage();
+
+    console.log('Opening BetPawa login page...');
     await page.goto('https://www.betpawa.co.tz/login', { waitUntil: 'networkidle2' });
 
-    // Ingiza namba bila +255
-    await page.type('input[type="tel"]', '618306398');
-    await page.type('input[type="password"]', 'na3#');
-    await page.waitForTimeout(1000); // delay ndogo
+    // Ingiza namba ya simu na password
+    await page.type('input[type="tel"]', phoneNumber);
+    await page.type('input[type="password"]', password);
 
+    console.log('Submitting login form...');
     await page.click('button[type="submit"]');
-    await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
-    const url = page.url();
-    if (url.includes('login')) {
-      throw new Error('Login failed!');
-    }
+    await page.waitForTimeout(5000); // subiri response baada ya login
 
-    await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      chat_id: CHAT_ID,
-      text: '✅ Login ya BetPawa imefanikiwa!'
-    });
+    const currentUrl = page.url();
+    console.log('Current URL after login:', currentUrl);
 
-  } catch (error) {
-    console.error(error);
-    await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      chat_id: CHAT_ID,
-      text: `❌ Error: ${error.message}`
-    });
-  } finally {
-    if (browser) await browser.close();
+    // Optional: angalia jina la mtumiaji au ujumbe wowote unaothibitisha login
+    const content = await page.content();
+    console.log('Page content snippet:', content.slice(0, 500));
+
+    await browser.close();
+  } catch (err) {
+    console.error('Login failed:', err.message);
   }
 };
+
+login();
