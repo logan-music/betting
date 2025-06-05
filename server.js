@@ -1,42 +1,86 @@
-const chromium = require('chrome-aws-lambda');
+const puppeteer = require('puppeteer-core');
+const chromeLambda = require('chrome-aws-lambda');
+const axios = require('axios');
+const { parse } = require('cookie');
+const puppeteerExtra = require('puppeteer-extra');
+const puppeteerExtraPluginStealth = require('puppeteer-extra-plugin-stealth');
+const puppeteerExtraPluginAdblocker = require('puppeteer-extra-plugin-adblocker');
 
-(async () => {
-  let browser = null;
+// Initialize the plugins for puppeteer
+puppeteerExtra.use(puppeteerExtraPluginStealth());
+puppeteerExtra.use(puppeteerExtraPluginAdblocker());
 
-  try {
-    browser = await chromium.puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
-      headless: chromium.headless,
-    });
+const login = async () => {
+    // Launch the browser
+    let browser = null;
+    let page = null;
+    
+    try {
+        browser = await puppeteerExtra.launch({
+            headless: true,
+            args: [
+                ...chromeLambda.args,
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+            ],
+            executablePath: await chromeLambda.executablePath,
+            defaultViewport: chromeLambda.defaultViewport,
+        });
 
-    const page = await browser.newPage();
-    console.log('[+] Opening BetPawa login page...');
-    await page.goto('https://www.betpawa.co.tz/login', { waitUntil: 'networkidle2' });
+        page = await browser.newPage();
 
-    console.log('[+] Typing phone number...');
-    await page.waitForSelector('input[type="tel"]', { timeout: 10000 });
-    await page.type('input[type="tel"]', '618306398', { delay: 100 });
+        console.log('Navigating to BetPawa login page...');
+        await page.goto('https://www.betpawa.co.tz/login');
 
-    console.log('[+] Typing password...');
-    await page.waitForSelector('input[type="password"]', { timeout: 10000 });
-    await page.type('input[type="password"]', 'na3#', { delay: 100 });
+        // Wait for page to load and display the phone number field
+        await page.waitForSelector('input[type="tel"]');
 
-    console.log('[+] Clicking login...');
-    await page.waitForSelector('button[type="submit"]', { timeout: 10000 });
-    await page.click('button[type="submit"]');
+        // Enter the phone number and password
+        console.log('Filling login details...');
+        await page.type('input[type="tel"]', '+255618306398', { delay: 100 });
+        await page.type('input[type="password"]', 'na3#', { delay: 100 });
 
-    console.log('[+] Waiting for login to complete...');
-    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
+        // Submit the form (click login button)
+        await page.click('button[type="submit"]');
+        
+        // Wait for navigation after login
+        await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
-    console.log('[✅] Logged in successfully! Current URL:', page.url());
+        console.log('Login successful!');
 
-  } catch (error) {
-    console.error('[❌] Login failed:', error.message);
-  } finally {
-    if (browser !== null) {
-      await browser.close();
+        // Save cookies after successful login
+        const cookies = await page.cookies();
+        console.log('Cookies saved:', cookies);
+
+        // Send cookies to your Telegram Bot or log them to the console
+        await sendCookiesToBot(cookies);
+
+    } catch (err) {
+        console.error('Error during login:', err);
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
     }
-  }
-})();
+};
+
+const sendCookiesToBot = async (cookies) => {
+    const telegramBotToken = '7501645118:AAHuL5xMbPY3WZXJVnidijR9gqoyyCS0BzY';
+    const chatId = '6978133426';
+    
+    // Send the cookies to the bot
+    const message = `Cookies:\n${JSON.stringify(cookies, null, 2)}`;
+    
+    const url = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+    try {
+        await axios.post(url, {
+            chat_id: chatId,
+            text: message
+        });
+        console.log('Cookies sent to Telegram bot!');
+    } catch (err) {
+        console.error('Error sending cookies to Telegram bot:', err);
+    }
+};
+
+login();
